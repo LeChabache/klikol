@@ -13,39 +13,28 @@ class HomeGuest extends ConsumerStatefulWidget {
 class _HomeGuestState extends ConsumerState<HomeGuest> {
   int _selectedIndex = 0;
 
-  static const List<Map<String, Object?>> _navItems = [
+  static const List<Map<String, dynamic>> _navItems = [
     {'label': 'Guest Home', 'icon': Icons.home, 'route': '/guest'},
     {'label': 'Feed', 'icon': Icons.feed, 'route': '/feed'},
     {'label': 'Profile', 'icon': Icons.person, 'route': 'profile'},
   ];
 
   void _onItemTapped(int index, BuildContext context) {
-    final route = _navItems[index]['route']! as String;
-
-    if (route == 'profile') {
+    if (_navItems[index]['route'] == 'profile') {
       Scaffold.of(context).openEndDrawer();
       return;
     }
-
-    final currentRoute = GoRouter.of(context).state.location;
-
-    if (currentRoute == route) {
-      // Prevent navigating to the same route
-      return;
-    }
-
     setState(() {
       _selectedIndex = index;
     });
-    context.go(route);
+    context.push(_navItems[index]['route']);
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentRoute = GoRouter.of(context).state.location;
-
-    final foundIndex = _navItems.indexWhere((item) => (item['route'] as String) == currentRoute);
-    _selectedIndex = foundIndex == -1 ? 0 : foundIndex;
+    final currentRoute = GoRouterState.of(context).uri.toString();
+    _selectedIndex = _navItems.indexWhere((item) => item['route'] == currentRoute);
+    if (_selectedIndex == -1) _selectedIndex = 0;
 
     return WillPopScope(
       onWillPop: () async {
@@ -70,12 +59,12 @@ class _HomeGuestState extends ConsumerState<HomeGuest> {
           selectedItemColor: Colors.blue,
           unselectedItemColor: Colors.grey,
           backgroundColor: Colors.white,
-          items: _navItems.map((item) {
-            return BottomNavigationBarItem(
-              icon: Icon(item['icon'] as IconData?),
-              label: item['label'] as String,
-            );
-          }).toList(),
+          items: _navItems
+              .map((item) => BottomNavigationBarItem(
+                    icon: Icon(item['icon']),
+                    label: item['label'],
+                  ))
+              .toList(),
         ),
       ),
     );

@@ -4,6 +4,11 @@ import 'package:go_router/go_router.dart';
 import '../core/providers.dart';
 import 'profile_drawer.dart';
 
+import '../features/home/view/home_screen.dart';
+import '../features/feed/view/feed_screen.dart';
+import '../features/messaging/view/messaging_screen.dart';
+import '../features/profile/view/profile_screen.dart'; // adjust imports to your structure
+
 class HomeLoggedIn extends ConsumerStatefulWidget {
   const HomeLoggedIn({super.key});
 
@@ -14,7 +19,7 @@ class HomeLoggedIn extends ConsumerStatefulWidget {
 class _HomeLoggedInState extends ConsumerState<HomeLoggedIn> {
   int _selectedIndex = 0;
 
-  static const List<Map<String, Object?>> _navItems = [
+  final List<Map<String, Object?>> _navItems = [
     {'label': 'Home', 'icon': Icons.home, 'route': '/home'},
     {'label': 'Feed', 'icon': Icons.feed, 'route': '/feed'},
     {'label': 'Messages', 'icon': Icons.message, 'route': '/messaging'},
@@ -22,46 +27,43 @@ class _HomeLoggedInState extends ConsumerState<HomeLoggedIn> {
   ];
 
   void _onItemTapped(int index, BuildContext context) {
-    final route = _navItems[index]['route']! as String;
-
+    final route = _navItems[index]['route'] as String;
     if (route == 'profile') {
       Scaffold.of(context).openEndDrawer();
       return;
     }
-
-    final currentRoute = GoRouter.of(context).state.location;
-
-    if (currentRoute == route) {
-      // Prevent navigating to the same route
-      return;
-    }
-
     setState(() {
       _selectedIndex = index;
     });
-    context.go(route);
+    // no context.go() or push here
   }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(firebaseUserProvider).valueOrNull;
 
-    final currentRoute = GoRouter.of(context).state.location;
-    final foundIndex = _navItems.indexWhere((item) => (item['route'] as String) == currentRoute);
-    _selectedIndex = foundIndex == -1 ? 0 : foundIndex;
-
     return WillPopScope(
       onWillPop: () async {
-        if (currentRoute != '/home') {
-          context.go('/home');
-          return false;
+        if (_selectedIndex != 0) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+          return false; // prevent default back, just switch tab
         }
-        return true;
+        return true; // allow system back to exit app
       },
       child: Scaffold(
         appBar: AppBar(title: Text('Welcome, ${user?.phoneNumber ?? 'User'}')),
         endDrawer: const ProfileDrawer(),
-        body: const Center(child: Text('This is logged-in user home')),
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: const [
+            HomeScreen(),
+            FeedScreen(),
+            MessagingScreen(),
+            ProfileScreen(),
+          ],
+        ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (index) => _onItemTapped(index, context),
@@ -69,21 +71,18 @@ class _HomeLoggedInState extends ConsumerState<HomeLoggedIn> {
           unselectedItemColor: Colors.grey,
           backgroundColor: Colors.white,
           items: _navItems.map((item) {
-            if (item['route'] == 'profile') {
-              return BottomNavigationBarItem(
-                icon: CircleAvatar(
-                  radius: 12,
-                  backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-                  child: user?.photoURL == null ? const Icon(Icons.person, size: 16) : null,
-                ),
-                label: item['label'] as String,
-              );
-            } else {
-              return BottomNavigationBarItem(
-                icon: Icon(item['icon'] as IconData?),
-                label: item['label'] as String,
-              );
-            }
+            final icon = item['route'] == 'profile'
+                ? CircleAvatar(
+                    radius: 12,
+                    backgroundImage:
+                        user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                    child: user?.photoURL == null ? const Icon(Icons.person, size: 16) : null,
+                  )
+                : Icon(item['icon'] as IconData?);
+            return BottomNavigationBarItem(
+              icon: icon,
+              label: item['label'] as String,
+            );
           }).toList(),
         ),
       ),
